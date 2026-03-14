@@ -20,18 +20,24 @@ Course project for **Object-Oriented Programming (21193)** at Afeka College of E
 
 I built this project as a core assignment in my Object-Oriented Programming course. It’s a complete system designed to manage examinations in an academic environment—handling everything from creating questions to generating full exams with automated scoring logic.
 
-The idea is to model an examination authority: there are question stocks, different exam types (Manual and Automatic), and a persistence layer to keep everything organized. What I like about this project is that it moves beyond simple exercises into a functional application where inheritance, interfaces, and file serialization work together to create a persistent, scalable tool.
+The idea is to model an examination authority: there are question stocks, different exam types (Manual and Automatic), and a persistence layer to keep everything organized. What I like about this project is that it touches almost every major Java OOP topic in one place. It's not just theory exercises - it's a complete system where inheritance, exceptions, file I/O, and custom logic all work together.
+
+### How it evolved:
+
+1. **Phase 1-2** - Basic classes (`Question`, `Answer`) with arrays and basic validation.
+2. **Phase 3** - Inheritance and polymorphism (Multiple Choice vs Open Questions).
+3. **Phase 4** - Custom exception hierarchy, file persistence (Serialization), and Strategy-like exam generation (`Manual` vs `Automatic`).
 
 ---
 
 ## 📋 Assignment Overview
 
-The project required implementing a system that manages a "Stock of Questions" and generates exams based on it:
+The project required implementing a robust system that manages a "Stock of Questions":
 
-- **Inheritance & Hierarchy** - Support for multiple question types (Multiple Choice and Open) and exam generation strategies.
-- **File I/O** - Ability to save and load the entire question bank to a `.dat` file using Java Serialization.
-- **Business Logic** - Strict validation for multiple choice answers (minimum of 3, maximum of 10) and exam size constraints.
-- **Exporting** - Generating professional formatted text files for the exam itself and a separate answer key.
+- **Exceptions** - Build an abstract `ExamException` class and derived classes like `NumOfQuestionsException` (for exam size) and `NumOfAnswersInMultiQuestionException` (for MCQ validation).
+- **File I/O** - Use **Object Serialization** to save/load the entire `Question[]` stock to a `.dat` file. This ensures the question bank persists across program restarts.
+- **Interfaces** - Implement the `Examable` interface to provide a unified way to create exams, whether they are generated manually by a user or automatically by a randomizer.
+- **Polymorphism** - Use a centralized `Question[]` array in the `Exam` class that can hold any type of question, leveraging dynamic binding for printing and scoring.
 
 ---
 
@@ -43,24 +49,24 @@ This is the reason this project is in my portfolio - it demonstrates hands-on ex
 | Concept | Where it's used |
 |---------|-----------------|
 | **Inheritance** | `ManualExam` and `AutomaticExam` inherit from `Exam`; `MultiQuestion` and `OpenQuestion` inherit from `Question` |
-| **Polymorphism** | Dynamic binding in the `toString()` and `createExam()` methods across the hierarchy |
-| **Abstract classes** | `Exam` and `Question` as base templates for all specific implementations |
-| **Interfaces** | `Examable` interface defining the contract for exam creation |
-| **Encapsulation** | Use of private members with protected/public accessors to ensure data integrity |
+| **Polymorphism** | Overriding `toString()` in question types; calling `createExam` on an `Examable` reference |
+| **Abstract classes** | `Exam` and `Question` define the core structure while forcing sub-types to implement specific logic |
+| **Interfaces** | `Examable` enforces a contract for all exam creation strategies |
+| **Encapsulation** | Private fields with public/protected accessors to maintain data integrity (e.g., `Level` enum) |
 
 ### Exception Handling
 | Exception class | When it's thrown |
 |----------------|-----------------|
-| `ExamException` | Abstract base class for all domain-specific errors |
-| `NumOfQuestionsException` | When the user attempts to create an exam with more than 10 questions |
-| `NumOfAnswersInMultiQuestionException` | When a multiple-choice question has fewer than 4 answers |
+| `ExamException` | Abstract base class with custom messaging |
+| `NumOfQuestionsException` | Thrown if an exam is created with more than 10 questions |
+| `NumOfAnswersInMultiQuestionException` | Thrown if an MCQ has fewer than 4 answers (including defaults) |
 
 ### File I/O & Persistence
 | Feature | Details |
 |---------|---------|
-| **Serialization** | Saving/Loading the entire `Question[]` stock using `ObjectOutputStream` and `ObjectInputStream` |
-| **File Export** | Printing formatted exams and answer keys to `.txt` files with custom timestamps |
-| **Path Portability** | Relative file path management for `StockOfQuestions.dat` to ensure the project runs anywhere |
+| **Serialization** | Saving/Loading the `Question[]` stock using `ObjectOutputStream` and `ObjectInputStream` |
+| **Relative Paths** | Fixed pathing for `StockOfQuestions.dat` to ensure portability across different machines |
+| **Buffered Output** | Printing the finalized exam and answers to `.txt` files for physical distribution |
 
 ---
 
@@ -82,7 +88,7 @@ classDiagram
 
     Exam "1" o-- "many" Question
     MultiQuestion "1" o-- "many" Answer
-    Program ..> Exam : uses
+    Program ..> Exam : orchestrates
     Program ..> Question : manages
 
     class Examable {
@@ -92,27 +98,43 @@ classDiagram
     class Exam {
         <<abstract>>
         #questions : Question[]
+        #numOfQuestions : int
+        +addQuestion(Question q) boolean
+        +removeQuestion(int index) void
+        +printAnswers() void
         +toString() String
-        +addQuestion(Question q) void
     }
     class Question {
         <<abstract>>
         #body : String
         #level : Level
+        +getBody() String
+        +getLevel() Level
         +toString()* String
     }
     class MultiQuestion {
         -answers : Answer[]
         -numOfCorrectAnswers : int
         +addAnswer(Answer a, boolean isCorrect) void
+        +removeAnswer(Answer a) void
+        +updateDefaultAnswers() void
+        +answersToString() String
     }
     class OpenQuestion {
         -answer : String
         +toString() String
     }
+    class Answer {
+        -body : String
+        -isCorrect : boolean
+        +getBody() String
+        +getIsCorrect() boolean
+    }
     class Program {
+        -s : Scanner
         +main(String[] args)$
         +createStockOfQuestions()$ Question[]
+        +readStockOfQuestionsFromFile()$ Question[]
     }
 ```
 
@@ -122,20 +144,21 @@ classDiagram
 
 ```
 ExamManagement/
-├── Program.java                # Main entry point and menu logic
-├── Exam.java                   # Abstract base class for exams
-├── ManualExam.java             # Manual exam generation logic
-├── AutomaticExam.java          # Automatic random exam generation
-├── Question.java               # Abstract base class for all questions
-├── MultiQuestion.java          # Multiple choice question logic
-├── OpenQuestion.java           # Open-ended question logic
-├── Answer.java                 # Answer objects for multiple-choice questions
-├── Examable.java               # Interface for exam creation
-├── ExamException.java          # Base custom exception
-├── NumOfQuestionsException.java # Validation error for exam size
-├── NumOfAnswersInMultiQuestionException.java # Validation for MCQ answers
-├── ExamTest.java               # JUnit 5 test cases
-└── StockOfQuestions.dat        # Persistent data file (Generated on run)
+├── Program.java                # Main entry - handles UI, file operations, and system flow
+├── Exam.java                   # Abstract base - manages the collection of questions for a single exam
+├── ManualExam.java             # Strategy for manual question selection from stock
+├── AutomaticExam.java          # Strategy for random automated exam generation
+├── Question.java               # Abstract base - defines common traits (body, difficulty level)
+├── MultiQuestion.java          # Implementation for Multiple Choice questions with answer array
+├── OpenQuestion.java           # Implementation for open-ended questions with a specific key
+├── Answer.java                 # Value object representing a single potential answer
+├── Level.java                  # Enum for difficulty levels: EASY, MEDIUM, HARD
+├── Examable.java               # Interface defining the createExam contract
+├── ExamException.java          # Custom abstract exception for domain errors
+├── NumOfQuestionsException.java # Thrown on invalid exam size
+├── NumOfAnswersInMultiQuestionException.java # Thrown on invalid MCQ answer count
+├── ExamTest.java               # JUnit 5 test suite for regression testing
+└── StockOfQuestions.dat        # Binary file for persistent question bank storage
 ```
 
 ---
@@ -163,11 +186,13 @@ ExamManagement/
 
 ## 🎯 What the Program Does
 
-The program provides an interactive menu to:
-1. **Manage Stock** - Create or load a persistent question bank.
-2. **Generate Exams** - Build Manual or Automatic exams with runtime validation.
-3. **Handle Exceptions** - Real-time feedback for business rule violations (e.g., trying to add too many questions).
-4. **File Output** - Save the finalized exam and its solution key to separate text files.
+The program provides a console-based interface to:
+1. **Initialize System** - Load an existing question bank from a binary file or create a fresh one.
+2. **Select Exam Mode** - Choose between hand-picking questions (Manual) or generating them randomly (Automatic).
+3. **Question Management** - Add new questions (Open or MCQ) to the system, edit answers, and delete items.
+4. **Validation** - Real-time checks ensure all business rules are met before an exam is finalized.
+5. **Persistence** - Every change to the stock is saved back to `StockOfQuestions.dat`.
+6. **Export** - Generate two separate `.txt` files containing the exam questions and the correct answers respectively.
 
 ---
 
