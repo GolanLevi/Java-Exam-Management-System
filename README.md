@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🧠 Java Exam Management System
+# 📝 Java Exam Management System
 
 A Java OOP project showcasing inheritance, polymorphism, abstract classes, interfaces, custom exception handling, file serialization, and robust business logic validation.
 
